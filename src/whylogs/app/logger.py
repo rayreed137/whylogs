@@ -450,10 +450,10 @@ class Logger:
                     self.log_image(
                         data,
                         feature_transforms=image_feature_transforms,
-                        metadata_attributes=[],
+                        metadata_attributes="all",
                     )
                 else:
-                    self.log_image(data, metadata_attributes=[])
+                    self.log_image(data, metadata_attributes="all")
             else:
                 raise NotImplementedError("File format not supported {}, format:{}".format(type(data), fmt))
 
