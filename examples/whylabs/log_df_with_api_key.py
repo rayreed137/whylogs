@@ -15,7 +15,7 @@ from whylogs.app.session import get_or_create_session
 os.environ["WHYLABS_API_KEY"] = "<API-KEY>"
 os.environ["WHYLABS_API_ENDPOINT"] = "<end point override. not required>"
 os.environ["WHYLABS_DEFAULT_ORG_ID"] = "<your-org-id>"
-os.environ["WHYLABS_DEFAULT_DATASET_ID"] = "<your-default-dataset-id>"
+os.environ["WHYLABS_DEFAULT_DATASET_ID"] = "<your-model-id>"
 
 module_logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)
