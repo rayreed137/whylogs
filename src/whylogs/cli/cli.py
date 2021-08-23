@@ -4,8 +4,7 @@ import click
 
 from whylogs import __version__ as whylogs_version
 from whylogs.cli.init import init
-
-try:
+from whylogs.cli.view import view
     import colorama
 
     colorama.init()
@@ -49,6 +48,7 @@ def cli(verbose):
 
 
 cli.add_command(init)
+cli.add_command(view)
 
 
 def main():
