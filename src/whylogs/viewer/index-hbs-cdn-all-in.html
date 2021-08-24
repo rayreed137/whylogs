@@ -10,6 +10,10 @@
     <title>Profile Viewer | whylogs</title>
 
     <link rel="icon" href="images/whylabs-favicon.png" type="image/png" sizes="16x16" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Asap:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
     <link rel="preconnect" href="https://fonts.gstatic.com" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" />
 
@@ -78,81 +82,6 @@
         --contrastTableRow: #fafafa;
         --whiteBackground: #ffffff;
         --primaryBackground: #e5e5e5;
-      }
-
-      /* Load fonts */
-      @font-face {
-        font-family: "Asap";
-        src: url("./fonts/Asap-BoldItalic.woff2") format("woff2"), url("./fonts/Asap-BoldItalic.woff") format("woff"),
-          url("./fonts/Asap-BoldItalic.ttf") format("truetype");
-        font-weight: bold;
-        font-style: italic;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "Asap";
-        src: url("./fonts/Asap-Italic.woff2") format("woff2"), url("./fonts/Asap-Italic.woff") format("woff"),
-          url("./fonts/Asap-Italic.ttf") format("truetype");
-        font-weight: normal;
-        font-style: italic;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "Asap";
-        src: url("./fonts/Asap-Bold.woff2") format("woff2"), url("./fonts/Asap-Bold.woff") format("woff"),
-          url("./fonts/Asap-Bold.ttf") format("truetype");
-        font-weight: bold;
-        font-style: normal;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "Asap";
-        src: url("./fonts/Asap-SemiBold.woff2") format("woff2"), url("./fonts/Asap-SemiBold.woff") format("woff"),
-          url("./fonts/Asap-SemiBold.ttf") format("truetype");
-        font-weight: 600;
-        font-style: normal;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "Asap";
-        src: url("./fonts/Asap-SemiBoldItalic.woff2") format("woff2"),
-          url("./fonts/Asap-SemiBoldItalic.woff") format("woff"),
-          url("./fonts/Asap-SemiBoldItalic.ttf") format("truetype");
-        font-weight: 600;
-        font-style: italic;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "Asap";
-        src: url("./fonts/Asap-MediumItalic.woff2") format("woff2"),
-          url("./fonts/Asap-MediumItalic.woff") format("woff"),
-          url("./fonts/Asap-MediumItalic.ttf") format("truetype");
-        font-weight: 500;
-        font-style: italic;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "Asap";
-        src: url("./fonts/Asap-Regular.woff2") format("woff2"), url("./fonts/Asap-Regular.woff") format("woff"),
-          url("./fonts/Asap-Regular.ttf") format("truetype");
-        font-weight: normal;
-        font-style: normal;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "Asap";
-        src: url("./fonts/Asap-Medium.woff2") format("woff2"), url("./fonts/Asap-Medium.woff") format("woff"),
-          url("./fonts/Asap-Medium.ttf") format("truetype");
-        font-weight: 500;
-        font-style: normal;
-        font-display: swap;
       }
 
       /* RESET STYLE */
@@ -503,6 +432,22 @@
         border-left: 1px solid var(--brandPrimary700);
         transform: translateX(100%);
         overflow: auto;
+      }
+
+      .wl-property-panel__chart {
+        margin-bottom: 60px;
+      }
+
+      .wl-property-panel__chart--single {
+        padding-bottom: 30px;
+      }
+
+      .wl-property-panel__chart-title {
+        color: var(--brandSecondary900);
+        font-size: 14px;
+        font-family: Asap, sans-serif;
+        font-weight: bold;
+        margin-bottom: 15px;
       }
 
       .wl-property-panel--open {
@@ -893,7 +838,7 @@
                       <div class="wl-table-cell">
                         <div class="wl-table-cell__title-wrap">
                           <h4 class="wl-table-cell__title">{{@key}}</h4>
-                          <button class="wl-table-cell__title-button" onclick="openPropertyPanel('{{json this}}', '{{inferredType this}}')" type="button">View details</button></div>
+                          <button class="wl-table-cell__title-button" onclick="openPropertyPanel('{{json this}}', '{{inferredType this}}', '{{getPropertyPanelGraphHtml this}}')" type="button">View details</button></div>
                         <div class="wl-table-cell__graph-wrap"><div>
                             {{{getGraphHtml this}}}
                           </div></div></div><div
@@ -932,6 +877,9 @@
 
                 <div class="wl-property-panel">
                   <button type="button" class="wl-property-panel__button btn-close" onclick="handleClosePropertyPanel() " aria-label="Close"></button>
+
+                  <div id="wl-property-panel__chart" class="wl-property-panel__chart"></div>
+
                   <h5 class="wl-property-panel__title"></h5>
                   <div>
                     <table class="wl-property-panel__table">
@@ -967,16 +915,73 @@
       </div>
     </div>
   </script>
-  
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.7.0/d3.min.js" integrity="sha512-cd6CHE+XWDQ33ElJqsi0MdNte3S+bQY819f7p3NUHgwQQLXSKjE4cPZTeGNI+vaxZynk1wVU3hoHmow3m089wA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script
+    src="https://code.jquery.com/jquery-3.6.0.min.js"
+    integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+    crossorigin="anonymous"
+  ></script>
+
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.7.0/d3.min.js"
+    integrity="sha512-cd6CHE+XWDQ33ElJqsi0MdNte3S+bQY819f7p3NUHgwQQLXSKjE4cPZTeGNI+vaxZynk1wVU3hoHmow3m089wA=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  ></script>
 
   <script>
     function registerHandlebarHelperFunctions() {
       //helper fun
       function fixNumberTo(number, decimals = 3) {
         return parseFloat(number).toFixed(decimals);
+      }
+
+      function generateChart(data, height = 75, width = 350) {
+        const MARGIN = {
+          TOP: 5,
+          RIGHT: 5,
+          BOTTOM: 5,
+          LEFT: 55,
+        };
+        const SVG_WIDTH = width;
+        const SVG_HEIGHT = height;
+        const CHART_WIDTH = SVG_WIDTH - MARGIN.LEFT - MARGIN.RIGHT;
+        const CHART_HEIGHT = SVG_HEIGHT - MARGIN.TOP - MARGIN.BOTTOM;
+        const PRIMARY_COLOR_HEX = "#0e7384";
+
+        const svgEl = d3.create("svg").attr("width", SVG_WIDTH).attr("height", SVG_HEIGHT);
+
+        const maxYValue = d3.max(data, (d) => Math.abs(d.axisY));
+
+        const xScale = d3
+          .scaleBand()
+          .domain(data.map((d) => d.axisX))
+          .range([MARGIN.LEFT, MARGIN.LEFT + CHART_WIDTH]);
+        const yScale = d3
+          .scaleLinear()
+          .domain([0, maxYValue * 1.02]) // so that chart's height has 10§2% height of the maximum value
+          .range([CHART_HEIGHT, 0]);
+
+        // Add the y Axis
+        svgEl
+          .append("g")
+          .attr("transform", "translate(" + MARGIN.LEFT + ", " + MARGIN.TOP + ")")
+          .call(d3.axisLeft(yScale).tickValues([0, maxYValue]));
+
+        const gChart = svgEl.append("g");
+        gChart
+          .selectAll(".bar")
+          .data(data)
+          .enter()
+          .append("rect")
+          .classed("bar", true)
+          .attr("width", xScale.bandwidth() - 1)
+          .attr("height", (d) => CHART_HEIGHT - yScale(d.axisY))
+          .attr("x", (d) => xScale(d.axisX))
+          .attr("y", (d) => yScale(d.axisY) + MARGIN.TOP)
+          .attr("fill", PRIMARY_COLOR_HEX);
+
+        return svgEl._groups[0][0].outerHTML;
       }
 
       Handlebars.registerHelper("json", function (context) {
@@ -1147,6 +1152,7 @@
 
       Handlebars.registerHelper("getGraphHtml", function (column) {
         let data = [];
+
         if (column.numberSummary) {
           if (column.numberSummary.isDiscrete) {
             column.frequentItems.items.forEach((item, index) => {
@@ -1166,53 +1172,50 @@
         } else {
           return '<span class="wl-table-cell__bedge-wrap">No data to show the chart</span>';
         }
-        // Map data to use in chart
 
-        const MARGIN = {
-          TOP: 5,
-          RIGHT: 5,
-          BOTTOM: 5,
-          LEFT: 55,
-        };
-        const SVG_WIDTH = 350;
-        const SVG_HEIGHT = 75;
-        const CHART_WIDTH = SVG_WIDTH - MARGIN.LEFT - MARGIN.RIGHT;
-        const CHART_HEIGHT = SVG_HEIGHT - MARGIN.TOP - MARGIN.BOTTOM;
-        const PRIMARY_COLOR_HEX = "#0e7384";
+        return generateChart(data);
+      });
 
-        const svgEl = d3.create("svg").attr("width", SVG_WIDTH).attr("height", SVG_HEIGHT);
+      Handlebars.registerHelper("getPropertyPanelGraphHtml", function (column) {
+        let chartString = "";
+        const getChart = (chart) => `<div id="chart">${chart}</div>`;
+        const freqChart = (chart) =>
+          `<div class="wl-property-panel__chart--single"><div class="wl-property-panel__chart-title">Frequent Items Data</div>${chart}</div>`;
+        const histChart = (chart) =>
+          `<div class="wl-property-panel__chart--single"><div class="wl-property-panel__chart-title">Histogram Data</div>${chart}</div>`;
 
-        const maxYValue = d3.max(data, (d) => Math.abs(d.axisY));
+        const freqData = [];
+        const histData = [];
 
-        const xScale = d3
-          .scaleBand()
-          .domain(data.map((d) => d.axisX))
-          .range([MARGIN.LEFT, MARGIN.LEFT + CHART_WIDTH]);
-        const yScale = d3
-          .scaleLinear()
-          .domain([0, maxYValue * 1.02]) // so that chart's height has 10§2% height of the maximum value
-          .range([CHART_HEIGHT, 0]);
+        if (column.numberSummary) {
+          if (column.frequentItems && column.frequentItems.items) {
+            column.frequentItems.items.forEach((item, index) => {
+              freqData.push({
+                axisY: item.estimate,
+                axisX: index,
+              });
+            });
+          }
 
-        // Add the y Axis
-        svgEl
-          .append("g")
-          .attr("transform", "translate(" + MARGIN.LEFT + ", " + MARGIN.TOP + ")")
-          .call(d3.axisLeft(yScale).tickValues([0, maxYValue]));
+          if (column.numberSummary.histogram && column.numberSummary.histogram.counts) {
+            column.numberSummary.histogram.counts.slice(0, 30).forEach((count, index) => {
+              histData.push({
+                axisY: count,
+                axisX: index,
+              });
+            });
+          }
 
-        const gChart = svgEl.append("g");
-        gChart
-          .selectAll(".bar")
-          .data(data)
-          .enter()
-          .append("rect")
-          .classed("bar", true)
-          .attr("width", xScale.bandwidth() - 1)
-          .attr("height", (d) => CHART_HEIGHT - yScale(d.axisY))
-          .attr("x", (d) => xScale(d.axisX))
-          .attr("y", (d) => yScale(d.axisY) + MARGIN.TOP)
-          .attr("fill", PRIMARY_COLOR_HEX);
+          if (column.numberSummary.isDiscrete) {
+            if (freqData.length > 0) chartString += freqChart(generateChart(freqData, 130));
+            if (histData.length > 0) chartString += histChart(generateChart(histData, 130));
+          } else {
+            if (histData.length > 0) chartString += histChart(generateChart(histData, 130));
+            if (freqData.length > 0) chartString += freqChart(generateChart(freqData, 130));
+          }
+        }
 
-        return svgEl._groups[0][0].outerHTML;
+        return getChart(chartString);
       });
     }
 
@@ -22537,7 +22540,6 @@
       const $sidebarFeatureNameList = document.getElementById("feature-list");
       const $featureSearch = document.getElementById("wl__feature-search");
       const $tableBody = document.getElementById("table-body");
-    
 
       // Global variables
       const activeTypes = {
@@ -22628,7 +22630,9 @@
       });
     }
 
-    function openPropertyPanel(column, infType) {
+    function openPropertyPanel(column, infType, chart) {
+      $("#wl-property-panel__chart").html(chart);
+
       const $propertyPanelTitle = $(".wl-property-panel__title");
       const $propertyPanelProfileName = $(".wl-property-panel__table-th-profile");
       const feature = JSON.parse(column);
