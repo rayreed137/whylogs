@@ -25,9 +25,10 @@ Otherwise, to be able to download the dataset, train the model, deploy the SageM
 ```bash
 boto3==1.18.39 # to interact with AWS using python
 python-dotenv==0.19.0 # to load .env file
+requests==2.26.0
 scikit-learn==0.24.2 # to tran the model
 pandas==1.3.2 # to manipulate data
-jupyterlab
+jupyterlab==3.1.12
 ```
 
 ## 2. Download data and train the model
