@@ -5,7 +5,6 @@ import atexit
 import logging
 import os
 
-import pandas as pd
 from dotenv import load_dotenv
 from extensions import init_swagger
 from flask import Flask, jsonify
@@ -17,9 +16,6 @@ from whylogs import get_or_create_session
 
 # Load environment variables
 load_dotenv()
-
-# Initialize Dataset
-df = pd.read_csv(os.environ["DATASET_URL"])
 
 # Load model with joblib
 model = load(os.environ["MODEL_PATH"])

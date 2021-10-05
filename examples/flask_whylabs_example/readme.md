@@ -89,8 +89,7 @@ WHYLABS_API_ENDPOINT=https://api.whylabsapp.com
 
 # Whylabs session
 DATASET_NAME=this_is_my_dataset
-ROTATION_TIME=1h
-DATASET_URL=dataset/Iris.csv
+ROTATION_TIME=5m
 ```
 
 </details>
