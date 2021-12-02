@@ -182,7 +182,7 @@ class SummaryConstraint:
     def __init__(
         self,
         first_field: str,
-        op: Op,
+        op: Union[Op, List[Tuple[Op, float]]],
         value=None,
         second_field: str = None,
         name: str = None,
@@ -195,10 +195,14 @@ class SummaryConstraint:
         self.second_field = second_field
         self.total = 0
         self.failures = 0
-        if value is not None and second_field is None:
+        self.funcs = None
+        if isinstance(op, list):
+            # multiple constraints on first_field implicitly ANDed
+            self.funcs = [_summary_funcs1[predicate](first_field, val) for predicate, val in op]
+        elif value is not None and second_field is None:
             # field-value summary comparison
             self.value = value
-            self.func = _summary_funcs1[op](first_field, value)
+            self.funcs = [_summary_funcs1[op](first_field, value)]
         elif second_field is not None and value is None:
             # field-field summary comparison
             self.second_field = second_field
@@ -212,7 +216,8 @@ class SummaryConstraint:
 
     def update(self, summ: NumberSummary) -> bool:
         self.total += 1
-        if not self.func(summ):
+
+        if not all([func(summ) for func in self.funcs]):
             self.failures += 1
             if self._verbose:
                 logger.info(f"summary constraint {self.name} failed")
