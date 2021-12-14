@@ -111,6 +111,9 @@ class ColumnProfile:
 
             self.string_tracker.update(value, character_list=character_list, token_method=token_method)
         # TODO: Implement real typed data conversion
+
+        self.constraints.update(value)
+
         typed_data = TypedDataConverter.convert(value)
 
         if not pd.isnull(typed_data):
@@ -125,8 +128,6 @@ class ColumnProfile:
             self.counters.increment_bool()
 
         self.number_tracker.track(typed_data)
-
-        self.constraints.update(typed_data)
 
     def _unique_count_summary(self) -> UniqueCountSummary:
         cardinality_summary = self.cardinality_tracker.to_summary(_UNIQUE_COUNT_BOUNDS_STD)

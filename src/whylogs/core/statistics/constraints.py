@@ -130,16 +130,9 @@ class ValueConstraint:
         v = str.lower(v) if isinstance(v, str) else v
         self.total += 1
         if self.op in [Op.MATCH, Op.NOMATCH] and not isinstance(v, str):
-            try:
-                v = str(v)
-                if not self.func(v):
-                    self.failures += 1
-                    if self._verbose:
-                        logger.info(f"value constraint {self.name} failed on value {v}")
-            except Exception:
-                self.failures += 1
-                if self._verbose:
-                    logger.info(f"value constraint {self.name} failed: value {v} not a string")
+            self.failures += 1
+            if self._verbose:
+                logger.info(f"value constraint {self.name} failed: value {v} not a string")
         elif not self.func(v):
             self.failures += 1
             if self._verbose:
