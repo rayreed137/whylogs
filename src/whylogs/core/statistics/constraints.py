@@ -717,11 +717,14 @@ def maxLessThanEqualConstraint(value=None, field=None, verbose=False):
     return SummaryConstraint("max", Op.LE, value=value, second_field=field, verbose=verbose)
 
 
-def quantileBetweenConstraint(quantile_value: Union[int, float, str], lower_value: Union[int, float], upper_value: Union[int, float], verbose: "bool" = False):
-    if not isinstance(quantile_value, (int, float, str)):
-        raise TypeError("The quantile value must be of type int, float or str")
+def quantileBetweenConstraint(quantile_value: Union[int, float], lower_value: Union[int, float], upper_value: Union[int, float], verbose=False):
+    if not isinstance(quantile_value, (int, float)):
+        raise TypeError("The quantile value must be of type int or float")
     if not isinstance(lower_value, (int, float)) or not isinstance(upper_value, (int, float)):
         raise TypeError("The lower and upper values must be of type int or float")
+
+    if not 0 <= quantile_value <= 1:
+        raise ValueError("The value of the quantile should be between 0 and 1")
 
     return SummaryConstraint(str(quantile_value), value=lower_value, upper_value=upper_value, op=Op.BTWN, verbose=verbose)
 
