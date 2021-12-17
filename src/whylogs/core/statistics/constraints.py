@@ -1,7 +1,7 @@
 import logging
 import numbers
 import re
-from typing import List, Mapping, Optional, Union
+from typing import Any, List, Mapping, Optional, Set, Union
 
 from datasketches import theta_a_not_b, update_theta_sketch
 from google.protobuf.json_format import Parse
@@ -38,7 +38,7 @@ _value_funcs = {
     Op.GT: lambda x: lambda v: v > x,  # assert incoming value 'v' is greater than some fixed value 'x'
     Op.MATCH: lambda x: lambda v: x.match(v) is not None,
     Op.NOMATCH: lambda x: lambda v: x.match(v) is None,
-    Op.IN_SET: lambda x: lambda v: v in x,
+    Op.IN: lambda x: lambda v: v in x,
 }
 
 _summary_funcs1 = {
@@ -50,6 +50,7 @@ _summary_funcs1 = {
     Op.GE: lambda f, v: lambda s: getattr(s, f) >= v,
     Op.GT: lambda f, v: lambda s: getattr(s, f) > v,
     Op.BTWN: lambda f, v1, v2: lambda s: v1 <= getattr(s, f) <= v2,
+    Op.IN: lambda f, v: lambda s: getattr(s, f) in v,
     Op.IN_SET: lambda reference_theta_sketch: lambda column_theta_sketch: round(
         theta_a_not_b().compute(column_theta_sketch, reference_theta_sketch).get_estimate(), 1
     )
@@ -104,7 +105,7 @@ class ValueConstraint:
         self.total = 0
         self.failures = 0
 
-        if (isinstance(value, set) and op != Op.IN_SET) or (not isinstance(value, set) and op == Op.IN_SET):
+        if (isinstance(value, set) and op != Op.IN) or (not isinstance(value, set) and op == Op.IN):
             raise ValueError("Value constraint must provide a set of values for using the IN operator")
 
         if value is not None and regex_pattern is None:
@@ -266,7 +267,7 @@ class SummaryConstraint:
         self.value = value
         self.upper_value = upper_value
 
-        if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET):
+        if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET, Op.IN):
             if value is not None or upper_value is not None or second_field is not None or third_field is not None or reference_set is None:
                 raise ValueError("When using set operations only set should be provided and not values or field names!")
 
@@ -280,12 +281,15 @@ class SummaryConstraint:
                         f" instead type: '{reference_set.__class__.__name__}' was provided!"
                     )
             self.reference_set = reference_set
-            self.ref_string_set = self.get_string_set()
-            self.ref_numbers_set = self.get_numbers_set()
+            if self.op == Op.IN:
+                self.func = _summary_funcs1[op](self.first_field, reference_set)
+            else:
+                self.ref_string_set = self.get_string_set()
+                self.ref_numbers_set = self.get_numbers_set()
 
-            self.reference_theta_sketch = self.create_theta_sketch()
-            self.string_theta_sketch = self.create_theta_sketch(self.ref_string_set)
-            self.numbers_theta_sketch = self.create_theta_sketch(self.ref_numbers_set)
+                self.reference_theta_sketch = self.create_theta_sketch()
+                self.string_theta_sketch = self.create_theta_sketch(self.ref_string_set)
+                self.numbers_theta_sketch = self.create_theta_sketch(self.ref_numbers_set)
 
         elif self.op == Op.BTWN:
             if value is not None and upper_value is not None and (second_field, third_field) == (None, None):
@@ -322,7 +326,7 @@ class SummaryConstraint:
 
     @property
     def name(self):
-        if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET):
+        if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET, Op.IN):
             reference_set_str = ""
             if len(self.reference_set) > 20:
                 tmp_set = set(list(self.reference_set)[:20])
@@ -362,8 +366,12 @@ class SummaryConstraint:
         column_number_kll_sketch = update_dict["number_kll_sketch"]
         num_values = update_dict["counters"].count
         unique_count_estimate = update_dict["unique_count"].estimate
+        most_common_value = update_dict["most_common_val"]
 
-        if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET):
+        if self.first_field == "most common value":
+            most_common = type("Object", (), {self.first_field: most_common_value})
+            result = self.func(most_common)
+        elif self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET):
             result = _summary_funcs1[self.op](self.string_theta_sketch)(column_string_theta) and _summary_funcs1[self.op](self.numbers_theta_sketch)(
                 column_number_theta
             )
@@ -395,7 +403,7 @@ class SummaryConstraint:
         assert self.first_field == other.first_field, f"Cannot merge constraints with different first_field: {self.first_field} and {other.first_field}"
         assert self.second_field == other.second_field, f"Cannot merge constraints with different second_field: {self.second_field} and {other.second_field}"
 
-        if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET):
+        if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET, Op.IN):
             assert self.reference_set == other.reference_set
             merged_constraint = SummaryConstraint(
                 first_field=self.first_field, op=self.op, reference_set=self.reference_set, name=self.name, verbose=self._verbose
@@ -484,7 +492,7 @@ class SummaryConstraint:
             )
 
     def to_protobuf(self) -> SummaryConstraintMsg:
-        if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET):
+        if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET, Op.IN):
             reference_set_msg = ListValue()
             reference_set_msg.extend(self.reference_set)
 
@@ -737,7 +745,7 @@ def columnValuesInSetConstraint(value_set: "set", verbose=False):
     except Exception:
         raise TypeError("The value set should be an iterable data type")
 
-    return ValueConstraint(Op.IN_SET, value=value_set, verbose=verbose)
+    return ValueConstraint(Op.IN, value=value_set, verbose=verbose)
 
 
 def containsEmailConstraint(regex_pattern: "str" = None, verbose=False):
@@ -832,3 +840,12 @@ def columnUniqueValueProportionBetweenConstraint(lower_fraction: float, upper_fr
         raise ValueError("The lower fraction should be decimal values less than or equal to the upper fraction")
 
     return SummaryConstraint("unique proportion", op=Op.BTWN, value=lower_fraction, upper_value=upper_fraction, verbose=verbose)
+
+
+def columnMostCommonValueInSetConstraint(value_set: Set[Any], verbose=False):
+    try:
+        value_set = set(value_set)
+    except Exception:
+        raise TypeError("The value set should be an iterable data type")
+
+    return SummaryConstraint("most common value", op=Op.IN, reference_set=value_set, verbose=verbose)
