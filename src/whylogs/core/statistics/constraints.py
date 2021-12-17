@@ -365,12 +365,16 @@ class SummaryConstraint:
         column_number_theta = update_dict["number_theta"]
         column_number_kll_sketch = update_dict["number_kll_sketch"]
         num_values = update_dict["counters"].count
+        null_values = update_dict["counters"].null_count.value
         unique_count_estimate = update_dict["unique_count"].estimate
         most_common_value = update_dict["most_common_val"]
 
         if self.first_field == "most common value":
             most_common = type("Object", (), {self.first_field: most_common_value})
             result = self.func(most_common)
+        elif self.first_field == "null count":
+            null_count = type("Object", (), {self.first_field: null_values})
+            result = self.func(null_count)
         elif self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET):
             result = _summary_funcs1[self.op](self.string_theta_sketch)(column_string_theta) and _summary_funcs1[self.op](self.numbers_theta_sketch)(
                 column_number_theta
@@ -849,3 +853,7 @@ def columnMostCommonValueInSetConstraint(value_set: Set[Any], verbose=False):
         raise TypeError("The value set should be an iterable data type")
 
     return SummaryConstraint("most common value", op=Op.IN, reference_set=value_set, verbose=verbose)
+
+
+def columnValuesNotNullConstraint(verbose=False):
+    return SummaryConstraint("null count", value=0, op=Op.EQ, verbose=verbose)
