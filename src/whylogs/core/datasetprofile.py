@@ -692,6 +692,8 @@ class DatasetProfile:
                     "string_theta": colprof.string_tracker.theta_sketch.theta_sketch,
                     "number_theta": colprof.number_tracker.theta_sketch.theta_sketch,
                     "number_kll_sketch": colprof.number_tracker.histogram,
+                    "counters": summ.counters,
+                    "unique_count": summ.unique_count,
                 }
 
                 # constraints.update(summ.number_summary)

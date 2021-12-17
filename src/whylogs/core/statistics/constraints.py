@@ -360,28 +360,30 @@ class SummaryConstraint:
         column_string_theta = update_dict["string_theta"]
         column_number_theta = update_dict["number_theta"]
         column_number_kll_sketch = update_dict["number_kll_sketch"]
+        num_values = update_dict["counters"].count
+        unique_count_estimate = update_dict["unique_count"].estimate
 
         if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET):
-            if not _summary_funcs1[self.op](self.string_theta_sketch)(column_string_theta) or not _summary_funcs1[self.op](self.numbers_theta_sketch)(
+            result = _summary_funcs1[self.op](self.string_theta_sketch)(column_string_theta) and _summary_funcs1[self.op](self.numbers_theta_sketch)(
                 column_number_theta
-            ):
-                self.failures += 1
-                if self._verbose:
-                    logger.info(f"summary constraint {self.name} failed")
-
+            )
         elif self.first_field.replace(".", "", 1).isnumeric():
             quantile_summary = quantiles_from_sketch(column_number_kll_sketch, [float(self.first_field)])
-            obj = type("Object", (), {self.first_field: quantile_summary.quantile_values[0]})
-            if not self.func(obj):
-                self.failures += 1
-                if self._verbose:
-                    logger.info(f"summary constraint {self.name} failed")
-
+            quantile_val = type("Object", (), {self.first_field: quantile_summary.quantile_values[0]})
+            result = self.func(quantile_val)
+        elif self.first_field == "unique count":
+            unique_count = type("Object", (), {self.first_field: unique_count_estimate})
+            result = self.func(unique_count)
+        elif self.first_field == "unique proportion":
+            unique_proportion_estimate = type("Object", (), {self.first_field: 0 if num_values == 0 else unique_count_estimate / num_values})
+            result = self.func(unique_proportion_estimate)
         else:
-            if not self.func(summ):
-                self.failures += 1
-                if self._verbose:
-                    logger.info(f"summary constraint {self.name} failed")
+            result = self.func(summ)
+
+        if not result:
+            self.failures += 1
+            if self._verbose:
+                logger.info(f"summary constraint {self.name} failed")
 
     def merge(self, other) -> "SummaryConstraint":
         if not other:
@@ -810,3 +812,23 @@ def stringLengthBetweenConstraint(lower_value: int, upper_value: int, verbose=Fa
 
     length_pattern = rf"^.{{{lower_value},{upper_value}}}$"
     return ValueConstraint(Op.MATCH, regex_pattern=length_pattern, verbose=verbose)
+
+
+def columnUniqueValueCountBetweenConstraint(lower_value: int, upper_value: int, verbose: bool = False):
+    if not all([isinstance(v, int) and v >= 0 for v in (lower_value, upper_value)]):
+        raise ValueError("The lower and upper values should be non-negative integers")
+
+    if lower_value > upper_value:
+        raise ValueError("The lower value should be less than or equal to the upper value")
+
+    return SummaryConstraint("unique count", op=Op.BTWN, value=lower_value, upper_value=upper_value, verbose=verbose)
+
+
+def columnUniqueValueProportionBetweenConstraint(lower_fraction: float, upper_fraction: float, verbose: bool = False):
+    if not all([isinstance(v, float) and 0 <= v <= 1 for v in (lower_fraction, upper_fraction)]):
+        raise ValueError("The lower and upper fractions should be between 0 and 1")
+
+    if lower_fraction > upper_fraction:
+        raise ValueError("The lower fraction should be decimal values less than or equal to the upper fraction")
+
+    return SummaryConstraint("unique proportion", op=Op.BTWN, value=lower_fraction, upper_value=upper_fraction, verbose=verbose)
