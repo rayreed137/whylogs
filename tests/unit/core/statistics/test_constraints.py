@@ -18,6 +18,8 @@ from whylogs.core.statistics.constraints import (  # columnMostCommonValueEquals
     columnUniqueValueProportionBetweenConstraint,
     columnValuesInSetConstraint,
     columnValuesNotNullConstraint,
+    columnValuesTypeEqualsConstraint,
+    columnValuesTypeInSetConstraint,
     containsCreditCardConstraint,
     containsEmailConstraint,
     containsSSNConstraint,
@@ -30,7 +32,7 @@ from whylogs.core.statistics.constraints import (  # columnMostCommonValueEquals
     stringLengthBetweenConstraint,
     stringLengthEqualConstraint,
 )
-from whylogs.proto import Op
+from whylogs.proto import InferredType, Op
 from whylogs.util.protobuf import message_to_json
 
 TEST_LOGGER = getLogger(__name__)
@@ -1170,3 +1172,120 @@ def test_serialization_deserialization_column_values_not_null_constraint():
     assert json_value["op"] == Op.Name(Op.EQ)
     assert pytest.approx(json_value["value"], 0.01) == 0
     assert json_value["verbose"] is True
+
+
+def test_column_values_type_equals_constraint_apply(local_config_path, df_lending_club):
+    cvtc = columnValuesTypeEqualsConstraint(expected_type=InferredType.Type.FRACTIONAL)
+    dc = DatasetConstraints(None, summary_constraints={"annual_inc": [cvtc]})
+    config = load_config(local_config_path)
+    session = session_from_config(config)
+    profile = session.log_dataframe(df_lending_club, "test.data", constraints=dc)
+    session.close()
+    report = profile.apply_summary_constraints()
+
+    assert report[0][1][0][0] == f"summary column values type {Op.Name(Op.EQ)} {InferredType.Type.Name(InferredType.Type.FRACTIONAL)}"
+    assert report[0][1][0][1] == 1
+    assert report[0][1][0][2] == 0
+
+
+def test_merge_column_values_type_equals_constraint_different_values():
+    c1 = columnValuesTypeEqualsConstraint(expected_type=InferredType.Type.FRACTIONAL)
+    c2 = columnValuesTypeEqualsConstraint(expected_type=InferredType.Type.NULL)
+    with pytest.raises(AssertionError):
+        c1.merge(c2)
+
+
+def test_merge_column_values_type_equals_constraint_same_values():
+    u1 = columnValuesTypeEqualsConstraint(expected_type=1)
+    u2 = columnValuesTypeEqualsConstraint(expected_type=1)
+    merged = u1.merge(u2)
+    message = json.loads(message_to_json(merged.to_protobuf()))
+
+    assert message["name"] == f"summary column values type {Op.Name(Op.EQ)} {InferredType.Type.Name(1)}"
+    assert message["firstField"] == "column values type"
+    assert message["op"] == Op.Name(Op.EQ)
+    assert message["value"] == 1
+    assert message["verbose"] is False
+
+
+def test_serialization_deserialization_column_values_type_equals_constraint():
+    u1 = columnValuesTypeEqualsConstraint(expected_type=InferredType.Type.STRING, verbose=True)
+
+    u1.from_protobuf(u1.to_protobuf())
+    json_value = json.loads(message_to_json(u1.to_protobuf()))
+
+    assert json_value["name"] == f"summary column values type {Op.Name(Op.EQ)} {InferredType.Type.Name(InferredType.Type.STRING)}"
+    assert json_value["firstField"] == "column values type"
+    assert json_value["op"] == Op.Name(Op.EQ)
+    assert json_value["value"] == InferredType.Type.STRING
+    assert json_value["verbose"] is True
+
+
+def test_column_values_type_equals_constraint_wrong_datatype():
+    with pytest.raises(ValueError):
+        columnValuesTypeEqualsConstraint(expected_type=2.3, verbose=True)
+    with pytest.raises(ValueError):
+        columnValuesTypeEqualsConstraint(expected_type="FRACTIONAL", verbose=True)
+
+
+def test_column_values_type_in_set_constraint_apply(local_config_path, df_lending_club):
+    type_set = {InferredType.Type.FRACTIONAL, InferredType.Type.INTEGRAL}
+    cvtc = columnValuesTypeInSetConstraint(type_set=type_set)
+    dc = DatasetConstraints(None, summary_constraints={"annual_inc": [cvtc]})
+    config = load_config(local_config_path)
+    session = session_from_config(config)
+    profile = session.log_dataframe(df_lending_club, "test.data", constraints=dc)
+    session.close()
+    report = profile.apply_summary_constraints()
+
+    print(report)
+    type_names = {InferredType.Type.Name(t) for t in type_set}
+    assert report[0][1][0][0] == f"summary column values type {Op.Name(Op.IN)} {type_names}"
+    assert report[0][1][0][1] == 1
+    assert report[0][1][0][2] == 0
+
+
+def test_merge_column_values_type_in_set_constraint_different_values():
+    c1 = columnValuesTypeInSetConstraint(type_set={InferredType.Type.INTEGRAL, InferredType.Type.STRING})
+    c2 = columnValuesTypeInSetConstraint(type_set={InferredType.Type.INTEGRAL, InferredType.Type.NULL})
+    with pytest.raises(AssertionError):
+        c1.merge(c2)
+
+
+def test_merge_column_values_type_in_set_constraint_same_values():
+    type_set = {InferredType.Type.INTEGRAL, InferredType.Type.STRING}
+    c1 = columnValuesTypeInSetConstraint(type_set=type_set)
+    c2 = columnValuesTypeInSetConstraint(type_set=type_set)
+    merged = c1.merge(c2)
+    message = json.loads(message_to_json(merged.to_protobuf()))
+
+    type_names = {InferredType.Type.Name(t) for t in type_set}
+    assert message["name"] == f"summary column values type {Op.Name(Op.IN)} {type_names}"
+    assert message["firstField"] == "column values type"
+    assert message["op"] == Op.Name(Op.IN)
+    assert message["referenceSet"] == list(type_set)
+    assert message["verbose"] is False
+
+
+def test_serialization_deserialization_column_values_type_in_set_constraint():
+    type_set = {InferredType.Type.STRING, InferredType.Type.INTEGRAL}
+    u1 = columnValuesTypeInSetConstraint(type_set=type_set, verbose=True)
+
+    u1.from_protobuf(u1.to_protobuf())
+    json_value = json.loads(message_to_json(u1.to_protobuf()))
+
+    type_names = {InferredType.Type.Name(t) if isinstance(t, int) else InferredType.Type.Name(t.type) for t in type_set}
+    assert json_value["name"] == f"summary column values type {Op.Name(Op.IN)} {type_names}"
+    assert json_value["firstField"] == "column values type"
+    assert json_value["op"] == Op.Name(Op.IN)
+    assert json_value["referenceSet"] == list(type_set)
+    assert json_value["verbose"] is True
+
+
+def test_column_values_type_in_set_constraint_wrong_datatype():
+    with pytest.raises(TypeError):
+        columnValuesTypeInSetConstraint(type_set={2.3, 1}, verbose=True)
+    with pytest.raises(TypeError):
+        columnValuesTypeInSetConstraint(type_set={"FRACTIONAL", 2}, verbose=True)
+    with pytest.raises(TypeError):
+        columnValuesTypeInSetConstraint(type_set="ABCD")

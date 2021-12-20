@@ -11,6 +11,7 @@ from whylogs.core.summaryconverters import quantiles_from_sketch
 from whylogs.proto import (
     DatasetConstraintMsg,
     DatasetProperties,
+    InferredType,
     Op,
     SummaryBetweenConstraintMsg,
     SummaryConstraintMsg,
@@ -326,7 +327,13 @@ class SummaryConstraint:
 
     @property
     def name(self):
-        if self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET, Op.IN):
+        if self.first_field == "column values type":
+            if self.value:
+                v = InferredType.Type.Name(self.value)
+            else:
+                v = {InferredType.Type.Name(element) for element in list(self.reference_set)[:20]}
+            return self._name if self._name is not None else f"summary {self.first_field} {Op.Name(self.op)} {v}"
+        elif self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET, Op.IN):
             reference_set_str = ""
             if len(self.reference_set) > 20:
                 tmp_set = set(list(self.reference_set)[:20])
@@ -368,6 +375,7 @@ class SummaryConstraint:
         null_values = update_dict["counters"].null_count.value
         unique_count_estimate = update_dict["unique_count"].estimate
         most_common_value = update_dict["most_common_val"]
+        inferred_type = update_dict["schema"].inferred_type.type
 
         if self.first_field == "most common value":
             most_common = type("Object", (), {self.first_field: most_common_value})
@@ -375,6 +383,9 @@ class SummaryConstraint:
         elif self.first_field == "null count":
             null_count = type("Object", (), {self.first_field: null_values})
             result = self.func(null_count)
+        elif self.first_field == "column values type":
+            type_obj = type("Object", (), {self.first_field: inferred_type})
+            result = self.func(type_obj)
         elif self.op in (Op.IN_SET, Op.CONTAINS_SET, Op.EQ_SET):
             result = _summary_funcs1[self.op](self.string_theta_sketch)(column_string_theta) and _summary_funcs1[self.op](self.numbers_theta_sketch)(
                 column_number_theta
@@ -857,3 +868,68 @@ def columnMostCommonValueInSetConstraint(value_set: Set[Any], verbose=False):
 
 def columnValuesNotNullConstraint(verbose=False):
     return SummaryConstraint("null count", value=0, op=Op.EQ, verbose=verbose)
+
+
+def columnValuesTypeEqualsConstraint(expected_type: Union[InferredType, int], verbose: bool = False):
+    """
+
+    Parameters
+    ----------
+    expected_type: Union[InferredType, int]
+        whylogs.proto.InferredType.Type - Enumeration of allowed inferred data types
+        If supplied as integer value, should be one of:
+            UNKNOWN = 0
+            NULL = 1
+            FRACTIONAL = 2
+            INTEGRAL = 3
+            BOOLEAN = 4
+            STRING = 5
+    verbose: bool
+        If true, log every application of this constraint that fails.
+        Useful to identify specific streaming values that fail the constraint.
+
+    Returns
+    -------
+    SummaryConstraint
+    """
+
+    if not isinstance(expected_type, (InferredType, int)):
+        raise ValueError("The expected_type parameter should be of type whylogs.proto.InferredType or int")
+    if isinstance(expected_type, InferredType):
+        expected_type = expected_type.type
+
+    return SummaryConstraint("column values type", op=Op.EQ, value=expected_type, verbose=verbose)
+
+
+def columnValuesTypeInSetConstraint(type_set: Set[int], verbose: bool = False):
+    """
+
+    Parameters
+    ----------
+    type_set: Set[int]
+        whylogs.proto.InferredType.Type - Enumeration of allowed inferred data types
+        If supplied as integer value, should be one of:
+            UNKNOWN = 0
+            NULL = 1
+            FRACTIONAL = 2
+            INTEGRAL = 3
+            BOOLEAN = 4
+            STRING = 5
+    verbose: bool
+        If true, log every application of this constraint that fails.
+        Useful to identify specific streaming values that fail the constraint.
+
+    Returns
+    -------
+    SummaryConstraint
+    """
+
+    try:
+        type_set = set(type_set)
+    except Exception:
+        raise TypeError("The type_set parameter should be an iterable of int values")
+
+    if not all([isinstance(t, int) for t in type_set]):
+        raise TypeError("All of the elements of the type_set parameter should be of type int")
+
+    return SummaryConstraint("column values type", op=Op.IN, reference_set=type_set, verbose=verbose)

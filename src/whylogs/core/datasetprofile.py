@@ -699,6 +699,7 @@ class DatasetProfile:
                     "counters": summ.counters,
                     "unique_count": summ.unique_count,
                     "most_common_val": TypedDataConverter.convert(most_common_val),
+                    "schema": summ.schema,
                 }
 
                 constraints.update(update_dict)
