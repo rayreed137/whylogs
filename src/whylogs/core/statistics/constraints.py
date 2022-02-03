@@ -266,6 +266,10 @@ class ValueConstraint:
             val_or_funct = self.regex_pattern
         return self._name if self._name is not None else f"value {Op.Name(self.op)} {val_or_funct}"
 
+    @property
+    def display_name(self):
+        return self._name if self._name is not None else self.name
+
     def update(self, v) -> bool:
         self.total += 1
         if self.op in [Op.MATCH, Op.NOMATCH] and not isinstance(v, str):
@@ -367,7 +371,7 @@ class ValueConstraint:
             regex_pattern = self.regex_pattern
 
         return ValueConstraintMsg(
-            name=self.name,
+            name=self._name,
             op=self.op,
             value=value,
             value_set=set_vals_message,
@@ -509,6 +513,10 @@ class SummaryConstraint:
             value_or_field = f"{self.value}/{self.second_field}"
 
         return self._name if self._name is not None else f"{constraint_type_str} {field_name} {Op.Name(self.op)} {value_or_field}"
+
+    @property
+    def display_name(self):
+        return self._name if self._name is not None else self.name
 
     def _check_and_init_table_shape_constraint(self, reference_set):
         if self.first_field in ("columns", "total_row_number"):  # table shape constraint
@@ -825,7 +833,7 @@ class SummaryConstraint:
                 value = self.value
 
         return SummaryConstraintMsg(
-            name=self.name,
+            name=self._name,
             first_field=self.first_field,
             second_field=second_field,
             value=value,
@@ -1294,6 +1302,8 @@ def maxLessThanEqualConstraint(value=None, field=None, verbose=False):
 
 
 def distinctValuesInSetConstraint(reference_set: Set[Any], name=None, verbose=False):
+    if name is None:
+        name = f"distinct values in {reference_set}"
     return SummaryConstraint("distinct_column_values", Op.IN_SET, reference_set=reference_set, name=name, verbose=False)
 
 
